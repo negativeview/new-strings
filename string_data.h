@@ -52,6 +52,8 @@ struct string_data *sd_create_copy(const char *value) {
 struct string_data *sd_clone(struct string_data *in) {
     struct string_data *sd = (struct string_data *)malloc(sizeof(struct string_data));
 
+    // TODO: This only works if the other bit of string data isn't freed before this one.
+    // It's risky. It works for our tests, but we need a more robust system.
     sd->flags = in->flags ^ STRING_OWNS_DATA;
     sd->length = in->length;
     sd->data = in->data;
