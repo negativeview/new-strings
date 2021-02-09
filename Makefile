@@ -5,7 +5,7 @@ all: cachegrind.out main.ll
 clean:
 	rm -f new-string cachegrind.out main.ll
 
-new-string: main.c string_data.h template_string.h template_string_piece.h
+new-string: main.c string_data.h segmented_string.h segmented_string_piece.h
 	gcc -O0 -g main.c -o new-string
 
 cachegrind.out: new-string
