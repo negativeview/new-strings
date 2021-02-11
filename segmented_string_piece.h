@@ -54,6 +54,8 @@ SS_RESULT ssp_free(struct segmented_string_piece *ssp) {
 
 SS_RESULT ssp_from_sd(struct string_data *sd, struct segmented_string_piece **ssp) {
     *ssp = (struct segmented_string_piece *)malloc(sizeof(struct segmented_string_piece));
+    if (*ssp == NULL) return SS_ALLOC_ERROR;
+    
     (*ssp)->type = STRING_PIECE_TYPE_STATIC;
     (*ssp)->data.static_string = sd;
     return SS_OK;

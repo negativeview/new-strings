@@ -94,6 +94,7 @@ SS_RESULT ss_create_initialized(StringType type, int prealloc_amount, struct seg
     *ss = (struct segmented_string *)malloc(
         sizeof(struct segmented_string)
     );
+    if (*ss == NULL) return SS_ALLOC_ERROR;
 
     (*ss)->type = type;
     (*ss)->capacity = prealloc_amount;
@@ -101,6 +102,7 @@ SS_RESULT ss_create_initialized(StringType type, int prealloc_amount, struct seg
     (*ss)->pieces = (struct segmented_string_piece *)malloc(
         sizeof(struct segmented_string_piece) * prealloc_amount
     );
+    if ((*ss)->pieces == NULL) return SS_ALLOC_ERROR;
 
     return SS_OK;
 }
@@ -116,6 +118,7 @@ SS_RESULT ss_create(struct segmented_string **ss) {
     *ss = (struct segmented_string *)malloc(
         sizeof(struct segmented_string)
     );
+    if (*ss == NULL) return SS_ALLOC_ERROR;
 
     /**
      * The generated assembly for this does the EMPTY_STRING and 0 in two
@@ -383,12 +386,15 @@ SS_RESULT ss_clone(struct segmented_string *in, struct segmented_string **out) {
     *out = (struct segmented_string *)malloc(
         sizeof(struct segmented_string)
     );
+    if (*out == NULL) return SS_ALLOC_ERROR;
+
     (*out)->type   = in->type;
     (*out)->length = in->length;
     (*out)->capacity = in->capacity;
     (*out)->pieces = (struct segmented_string_piece *)malloc(
         sizeof(struct segmented_string_piece) * (*out)->capacity
     );
+    if ((*out)->pieces == NULL) return SS_ALLOC_ERROR;
 
     for (uint8_t i = 0; i < (*out)->length; i++) {
         ssp_clone(&((*out)->pieces[i]), &in->pieces[i]);

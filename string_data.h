@@ -45,6 +45,7 @@ bool sd_matches(struct string_data *a, struct string_data *b) {
 
 SS_RESULT sd_create(struct string_data **sd) {
     *sd = (struct string_data *)malloc(sizeof(struct string_data));
+    if (*sd == NULL) return SS_ALLOC_ERROR;
     
     (*sd)->flags = 0;
     (*sd)->length = 0;
@@ -106,6 +107,7 @@ SS_RESULT sd_create_copy(const char *value, uint8_t length, struct string_data *
     (*sd)->flags = (STRING_DATA_ASCII | STRING_OWNS_DATA);
     (*sd)->length = length;
     (*sd)->data = (char *)malloc(sizeof(char) * (*sd)->length);
+    if ((*sd)->data == NULL) return SS_ALLOC_ERROR;
     strncpy((*sd)->data, value, (*sd)->length);
 
     return SS_OK;
