@@ -47,7 +47,7 @@ SS_RESULT ssp_free(struct segmented_string_piece *ssp) {
             }
             break;
         default:
-            return SS_ERR;
+            return SS_INVALID_STRING_TYPE;
     }
     return SS_OK;
 }
@@ -63,7 +63,7 @@ SS_RESULT ssp_explode_by_char(struct segmented_string_piece *ssp, struct segment
     switch (ssp->type) {
         case STRING_PIECE_TYPE_PLACEHOLDER_UINT8:
             {
-                return SS_ERR;
+                return SS_INVALID_STRING_TYPE;
             }
             break;
         case STRING_PIECE_TYPE_STATIC:
@@ -128,7 +128,7 @@ SS_RESULT ssp_print(struct segmented_string_piece *ssp) {
             }
             break;
         default:
-            return SS_ERR;
+            return SS_INVALID_STRING_TYPE;
     }
 
     return SS_OK;
@@ -150,7 +150,7 @@ SS_RESULT ssp_clone(struct segmented_string_piece *out, struct segmented_string_
             }
             break;
         default:
-            return SS_ERR;
+            return SS_INVALID_STRING_TYPE;
     }
 
     return SS_OK;

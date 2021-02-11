@@ -5,6 +5,7 @@
 typedef enum {
     SS_OK,
     SS_ERR,
+    SS_INVALID_STRING_TYPE,
     SS_RESULT_COUNT
 } SS_RESULT;
 

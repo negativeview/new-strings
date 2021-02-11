@@ -222,7 +222,7 @@ SS_RESULT ss_append_ssp(struct segmented_string *ss, struct segmented_string_pie
             }
             return SS_OK;
         default:
-            return SS_ERR;
+            return SS_INVALID_STRING_TYPE;
     }
 }
 
@@ -241,7 +241,7 @@ SS_RESULT ss_explode_by_char(struct segmented_string *ss, char c, struct segment
         case UNFILLED_TEMPLATE_STRING:
         case PARTIALLY_FILLED_TEMPLATE_STRING:
         case STRING_LIST:
-            return SS_ERR;
+            return SS_INVALID_STRING_TYPE;
         
         case EMPTY_STRING:
             // A split empty string is still an empty string.
@@ -261,6 +261,8 @@ SS_RESULT ss_explode_by_char(struct segmented_string *ss, char c, struct segment
 
                 return SS_OK;
             }
+        default:
+            return SS_INVALID_STRING_TYPE;
     }
 
     return SS_ERR;
@@ -333,7 +335,7 @@ SS_RESULT ss_print(struct segmented_string *ss) {
             {
                 printf("ss_print:INVALID:%d\n", ss->type);
             }
-            return SS_ERR;
+            return SS_INVALID_STRING_TYPE;
     }
 
     return SS_OK;
@@ -345,7 +347,7 @@ SS_RESULT ss_fill_uint8(struct segmented_string *ss, const char *placeholder, ui
         case UNFILLED_TEMPLATE_STRING:
             break;
         default:
-            return SS_ERR;
+            return SS_INVALID_STRING_TYPE;
     }
 
     bool has_unfilled = false;
@@ -426,7 +428,7 @@ SS_RESULT ss_append_placeholder_uint8(struct segmented_string *ss, const char *p
 
         case STRING_LIST:
             {
-                return SS_ERR;
+                return SS_INVALID_STRING_TYPE;
             }
             break;
     }
