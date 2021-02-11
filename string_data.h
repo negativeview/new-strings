@@ -1,16 +1,19 @@
 #pragma once
 
+#include "common.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define STRING_DATA_ASCII (1 << 0)
-#define STRING_DATA_UTF8  (1 << 1)
-#define STRING_OWNS_DATA  (1 << 2)
-#define STRING_CSTRING    (1 << 3)
-typedef uint8_t string_data_flag;
+enum StringDataFlag {
+    STRING_DATA_ASCII,
+    STRING_DATA_UTF8,
+    STRING_OWNS_DATA,
+    STRING_CSTRING
+};
 
 /**
  * String Data is used in several places for several purposes. It should be
@@ -20,8 +23,9 @@ typedef uint8_t string_data_flag;
  * specific length).
  */
 struct string_data {
-    string_data_flag flags;
+    enum StringDataFlag flags;
 
+    uint8_t ref_count;
     uint8_t length;
     char *data;
 };
@@ -39,30 +43,55 @@ bool sd_matches(struct string_data *a, struct string_data *b) {
     return strncmp(a->data, b->data, a->length) == 0;
 }
 
-struct string_data *sd_create() {
-    struct string_data *sd = (struct string_data *)malloc(sizeof(struct string_data));
+SS_RESULT sd_create(struct string_data **sd) {
+    *sd = (struct string_data *)malloc(sizeof(struct string_data));
     
-    sd->flags = 0;
-    sd->length = 0;
-    sd->data = NULL;
+    (*sd)->flags = 0;
+    (*sd)->length = 0;
+    (*sd)->ref_count = 1;
+    (*sd)->data = NULL;
 
-    return sd;
+    return SS_OK;
 }
 
-void sd_print(struct string_data *sd) {
+SS_RESULT sd_release(struct string_data *sd) {
+    sd->ref_count--;
+    if (sd->ref_count <= 0) {
+        if ((sd->flags & STRING_OWNS_DATA) == STRING_OWNS_DATA) {
+            free(sd->data);
+            free(sd);
+        }
+    }
+
+    return SS_OK;
+}
+
+SS_RESULT sd_print(struct string_data *sd) {
     if ((sd->flags & STRING_CSTRING) == STRING_CSTRING) {
         printf("%s", sd->data);
     } else {
         printf("%.*s", sd->length, sd->data);
     }
+
+    return SS_OK;
 }
 
-struct string_data *sd_create_from(struct string_data *in, uint8_t start, uint8_t end) {
-    struct string_data *sd = sd_create();
-    sd->flags = in->flags ^ (STRING_OWNS_DATA | STRING_CSTRING);
-    sd->length = end - start;
-    sd->data = &in->data[start];
-    return sd;
+/**
+ * Creates a new string data from the given string data.
+ *
+ * This new string_data does NOT own its data. It will not handle the data
+ * being removed out from under it gracefully. This is done as an efficiency
+ * thing -- don't misuse it!
+ */
+SS_RESULT sd_create_from(struct string_data *in, uint8_t start, uint8_t end, struct string_data **sd) {
+    SS_RESULT res = sd_create(sd);
+    if (res != SS_OK) return res;
+
+    (*sd)->flags = in->flags ^ (STRING_OWNS_DATA | STRING_CSTRING);
+    (*sd)->length = end - start;
+    (*sd)->data = &in->data[start];
+
+    return SS_OK;
 }
 
 /**
@@ -70,26 +99,16 @@ struct string_data *sd_create_from(struct string_data *in, uint8_t start, uint8_
  * and considers itself to "own" the copy. You can do whatever you want with
  * the argument afterward.
  */
-struct string_data *sd_create_copy(const char *value, uint8_t length) {
-    struct string_data *sd = sd_create();
-    sd->flags = (STRING_DATA_ASCII | STRING_OWNS_DATA);
-    sd->length = length;
-    sd->data = (char *)malloc(sizeof(char) * sd->length);
-    strncpy(sd->data, value, sd->length);
+SS_RESULT sd_create_copy(const char *value, uint8_t length, struct string_data **sd) {
+    SS_RESULT res = sd_create(sd);
+    if (res != SS_OK) return res;
 
-    return sd;
-}
+    (*sd)->flags = (STRING_DATA_ASCII | STRING_OWNS_DATA);
+    (*sd)->length = length;
+    (*sd)->data = (char *)malloc(sizeof(char) * (*sd)->length);
+    strncpy((*sd)->data, value, (*sd)->length);
 
-struct string_data *sd_clone(struct string_data *in) {
-    struct string_data *sd = sd_create();
-
-    // TODO: This only works if the other bit of string data isn't freed before this one.
-    // It's risky. It works for our tests, but we need a more robust system.
-    sd->flags = in->flags ^ STRING_OWNS_DATA;
-    sd->length = in->length;
-    sd->data = in->data;
-
-    return sd;
+    return SS_OK;
 }
 
 bool sd_is_equal_cstring(struct string_data *sd, const char *compared_to) {

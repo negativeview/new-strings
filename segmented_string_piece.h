@@ -1,14 +1,16 @@
 #pragma once
 
+#include "common.h"
 #include "string_data.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
-#define STRING_PIECE_TYPE_STATIC             (1 << 0)
-#define STRING_PIECE_TYPE_PLACEHOLDER_UINT8  (1 << 1)
-typedef uint8_t piece_type;
+enum StringPieceType {
+    STRING_PIECE_TYPE_STATIC,
+    STRING_PIECE_TYPE_PLACEHOLDER_UINT8
+};
 
 /**
  * A template string piece is one "piece" of a template string. This can be ANY
@@ -16,7 +18,7 @@ typedef uint8_t piece_type;
  * just a tagged union.
  */
 struct segmented_string_piece {
-    piece_type type;
+    enum StringPieceType type;
 
     union {
         struct string_data *static_string;
@@ -29,21 +31,39 @@ struct segmented_string_piece {
 
 /** FORWARD DECLARATIONS **/
 struct segmented_string;
-void ss_append_ssp(struct segmented_string *ss, struct segmented_string_piece *ssp);
+SS_RESULT ss_append_ssp(struct segmented_string *ss, struct segmented_string_piece *ssp);
 /** END FORWARD DECLARATIONS **/
 
-struct segmented_string_piece *ssp_from_sd(struct string_data *sd) {
-    struct segmented_string_piece *ssp = (struct segmented_string_piece *)malloc(sizeof(struct segmented_string_piece));
-    ssp->type = STRING_PIECE_TYPE_STATIC;
-    ssp->data.static_string = sd;
-    return ssp;
+SS_RESULT ssp_free(struct segmented_string_piece *ssp) {
+    switch (ssp->type) {
+        case STRING_PIECE_TYPE_STATIC:
+            {
+                sd_release(ssp->data.static_string);
+            }
+            break;
+        case STRING_PIECE_TYPE_PLACEHOLDER_UINT8:
+            {
+                sd_release(ssp->data.uint8_data.placeholder);
+            }
+            break;
+        default:
+            return SS_ERR;
+    }
+    return SS_OK;
 }
 
-void ssp_explode_by_char(struct segmented_string_piece *ssp, struct segmented_string *ss, char c) {
+SS_RESULT ssp_from_sd(struct string_data *sd, struct segmented_string_piece **ssp) {
+    *ssp = (struct segmented_string_piece *)malloc(sizeof(struct segmented_string_piece));
+    (*ssp)->type = STRING_PIECE_TYPE_STATIC;
+    (*ssp)->data.static_string = sd;
+    return SS_OK;
+}
+
+SS_RESULT ssp_explode_by_char(struct segmented_string_piece *ssp, struct segmented_string *ss, char c) {
     switch (ssp->type) {
         case STRING_PIECE_TYPE_PLACEHOLDER_UINT8:
             {
-                // TODO: ERROR
+                return SS_ERR;
             }
             break;
         case STRING_PIECE_TYPE_STATIC:
@@ -56,18 +76,24 @@ void ssp_explode_by_char(struct segmented_string_piece *ssp, struct segmented_st
                         end >= ssp->data.static_string->length
                             || ssp->data.static_string->data[end] == c
                     ) {
-                        struct string_data *sd = sd_create_from(
+                        struct string_data *sd;
+                        SS_RESULT res = sd_create_from(
                             ssp->data.static_string,
                             start,
-                            end
+                            end,
+                            &sd
                         );
+                        if (res != SS_OK) return res;
+
                         start = end + 1;
+
+                        struct segmented_string_piece *ssp;
+                        res = ssp_from_sd(sd, &ssp);
+                        if (res != SS_OK) return res;
 
                         ss_append_ssp(
                             ss,
-                            ssp_from_sd(
-                                sd
-                            )
+                            ssp
                         );
                     } else {
 
@@ -77,17 +103,23 @@ void ssp_explode_by_char(struct segmented_string_piece *ssp, struct segmented_st
                     }
                     end++;
                 }
-                struct string_data *sd = sd_create_from(ssp->data.static_string, start, end);
+
+                // TODO: Why are we even doing this??
+                struct string_data *sd;
+                SS_RESULT res = sd_create_from(ssp->data.static_string, start, end, &sd);
+                if (res != SS_OK) return res;
             }
             break;
     }
+
+    return SS_OK;
 }
 
-void ssp_print(struct segmented_string_piece *ssp) {
+SS_RESULT ssp_print(struct segmented_string_piece *ssp) {
     switch (ssp->type) {
         case STRING_PIECE_TYPE_STATIC:
             {
-                sd_print(ssp->data.static_string);
+                return sd_print(ssp->data.static_string);
             }
             break;
         case STRING_PIECE_TYPE_PLACEHOLDER_UINT8:
@@ -95,17 +127,20 @@ void ssp_print(struct segmented_string_piece *ssp) {
                 printf("%d", ssp->data.uint8_data.value);
             }
             break;
+        default:
+            return SS_ERR;
     }
+
+    return SS_OK;
 }
 
-void ssp_clone(struct segmented_string_piece *out, struct segmented_string_piece *in) {
+SS_RESULT ssp_clone(struct segmented_string_piece *out, struct segmented_string_piece *in) {
     switch (in->type) {
         case STRING_PIECE_TYPE_STATIC:
             {
                 out->type = STRING_PIECE_TYPE_STATIC;
-                out->data.static_string = sd_clone(
-                    in->data.static_string
-                );
+                out->data.static_string = in->data.static_string;
+                out->data.static_string->ref_count++;
             }
             break;
         case STRING_PIECE_TYPE_PLACEHOLDER_UINT8:
@@ -114,12 +149,18 @@ void ssp_clone(struct segmented_string_piece *out, struct segmented_string_piece
                 out->data.uint8_data = in->data.uint8_data;
             }
             break;
+        default:
+            return SS_ERR;
     }
+
+    return SS_OK;
 }
 
-void ssp_fill_uint8(struct segmented_string_piece *ssp, uint8_t value) {
+SS_RESULT ssp_fill_uint8(struct segmented_string_piece *ssp, uint8_t value) {
     // TODO: Error checking?
     ssp->data.uint8_data.value = value;
+
+    return SS_OK;
 }
 
 bool ssp_is_template(struct segmented_string_piece *ssp) {
@@ -136,12 +177,13 @@ bool ssp_is_template_uint8(struct segmented_string_piece *ssp, const char *place
     return sd_is_equal_cstring(ssp->data.uint8_data.placeholder, placeholder);
 }
 
-void ssp_init_static_copy(struct segmented_string_piece *ssp, const char *value, uint8_t length) {
+SS_RESULT ssp_init_static_copy(struct segmented_string_piece *ssp, const char *value, uint8_t length) {
     ssp->type = STRING_PIECE_TYPE_STATIC;
-    ssp->data.static_string = sd_create_copy(value, length);
+
+    return sd_create_copy(value, length, &(ssp->data.static_string));
 }
 
-void ssp_init_placeholder_uint8(struct segmented_string_piece *ssp, const char *placeholder) {
+SS_RESULT ssp_init_placeholder_uint8(struct segmented_string_piece *ssp, const char *placeholder) {
     ssp->type = STRING_PIECE_TYPE_PLACEHOLDER_UINT8;
-    ssp->data.uint8_data.placeholder = sd_create_copy(placeholder, strlen(placeholder));
+    return sd_create_copy(placeholder, strlen(placeholder), &(ssp->data.uint8_data.placeholder));
 }
