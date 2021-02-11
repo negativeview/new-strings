@@ -23,6 +23,22 @@ struct segmented_string {
     struct segmented_string_piece *pieces;
 };
 
+void _ss_increment_pieces(struct segmented_string *ss) {
+    ss->length++;
+    if (ss->length > ss->capacity) {
+        if (ss->capacity < 8) {
+            ss->capacity = 8;
+        } else {
+            ss->capacity *= 2;
+        }
+
+        ss->pieces = (struct segmented_string_piece *)realloc(
+            ss->pieces,
+            sizeof(struct segmented_string_piece) * ss->capacity
+        );
+    }
+}
+
 struct segmented_string *ss_create_initialized(string_type type, int prealloc_amount) {
     struct segmented_string *ss = (struct segmented_string *)malloc(
         sizeof(struct segmented_string)
@@ -82,20 +98,7 @@ void ss_append_static_copy(struct segmented_string *ss, const char *value, int l
             break;
     }
 
-    ss->length++;
-    if (ss->length > ss->capacity) {
-        if (ss->capacity < 8) {
-            ss->capacity = 8;
-        } else {
-            ss->capacity *= 2;
-        }
-
-        ss->pieces = (struct segmented_string_piece *)realloc(
-            ss->pieces,
-            sizeof(struct segmented_string_piece) * ss->capacity
-        );
-    }
-    
+    _ss_increment_pieces(ss);
     ssp_init_static_copy(&ss->pieces[ss->length - 1], value, length);
 }
 
@@ -243,8 +246,9 @@ struct segmented_string *ss_clone(struct segmented_string *in) {
     );
     ss->type   = in->type;
     ss->length = in->length;
+    ss->capacity = in->capacity;
     ss->pieces = (struct segmented_string_piece *)malloc(
-        sizeof(struct segmented_string_piece) * ss->length
+        sizeof(struct segmented_string_piece) * ss->capacity
     );
 
     for (uint8_t i = 0; i < ss->length; i++) {
@@ -283,19 +287,6 @@ void ss_append_placeholder_uint8(struct segmented_string *ss, const char *placeh
             break;
     }
 
-    ss->length++;
-    if (ss->length > ss->capacity) {
-        if (ss->capacity < 8) {
-            ss->capacity = 8;
-        } else {
-            ss->capacity *= 2;
-        }
-
-        ss->pieces = (struct segmented_string_piece *)realloc(
-            ss->pieces,
-            sizeof(struct segmented_string_piece) * ss->capacity
-        );
-    }
-
+    _ss_increment_pieces(ss);
     ssp_init_placeholder_uint8(&ss->pieces[ss->length - 1], placeholder);
 }
