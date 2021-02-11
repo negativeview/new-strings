@@ -26,6 +26,19 @@ struct string_data {
     char *data;
 };
 
+/**
+ * NOTE: Not currently used. Will be used for a hashing implementation that is
+ *       planned for the future.
+ */
+bool sd_matches(struct string_data *a, struct string_data *b) {
+    if (a->length != b->length) return false;
+
+    // TODO: This might not be the best idea if flags are used for things that "don't matter" for equality.
+    if (a->flags != b->flags) return false;
+
+    return strncmp(a->data, b->data, a->length) == 0;
+}
+
 struct string_data *sd_create() {
     struct string_data *sd = (struct string_data *)malloc(sizeof(struct string_data));
     

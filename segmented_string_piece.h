@@ -11,7 +11,9 @@
 typedef uint8_t piece_type;
 
 /**
- * A template string piece is one "piece" of a template string. This can be ANY piece, so this is the most dynamic part of the entire puzzle.
+ * A template string piece is one "piece" of a template string. This can be ANY
+ * piece, so this is the most dynamic part of the entire puzzle. It's basically
+ * just a tagged union.
  */
 struct segmented_string_piece {
     piece_type type;
