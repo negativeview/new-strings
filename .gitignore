@@ -1,3 +1,5 @@
 cachegrind.out
 main.ll
 new-string
+new-string.asm-annotated
+new-string.s

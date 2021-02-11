@@ -19,15 +19,46 @@ struct segmented_string {
 
     // We currently only support 255 total "pieces."
     uint8_t length;
+    uint8_t capacity;
     struct segmented_string_piece *pieces;
 };
 
+struct segmented_string *ss_create_initialized(string_type type, int prealloc_amount) {
+    struct segmented_string *ss = (struct segmented_string *)malloc(
+        sizeof(struct segmented_string)
+    );
+
+    ss->type = type;
+    ss->capacity = prealloc_amount;
+    ss->length = 0;
+    ss->pieces = (struct segmented_string_piece *)malloc(
+        sizeof(struct segmented_string_piece) * prealloc_amount
+    );
+
+    return ss;
+}
+
+/**
+ * Create an entirely uninitialized segmented string. This is likely not what
+ * you want to do, as it is inefficient. In practice you should know the size
+ * and type that you are creating.
+ */
 struct segmented_string *ss_create() {
     struct segmented_string *ss = (struct segmented_string *)malloc(
         sizeof(struct segmented_string)
     );
+
+    /**
+     * The generated assembly for this does the EMPTY_STRING and 0 in two
+     * instructions. We should be able to do in one. Is there any clean way to
+     * suggest that to the compiler?
+     *
+     * If EMPTY_STRING were equivalent to zero, I could also just zero the
+     * entire structure!
+     */
     ss->type = EMPTY_STRING;
     ss->length = 0;
+    ss->capacity = 0;
     ss->pieces = NULL;
 
     return ss;
@@ -52,10 +83,18 @@ void ss_append_static_copy(struct segmented_string *ss, const char *value, int l
     }
 
     ss->length++;
-    ss->pieces = (struct segmented_string_piece *)realloc(
-        ss->pieces,
-        sizeof(struct segmented_string_piece) * ss->length
-    );
+    if (ss->length > ss->capacity) {
+        if (ss->capacity < 8) {
+            ss->capacity = 8;
+        } else {
+            ss->capacity *= 2;
+        }
+
+        ss->pieces = (struct segmented_string_piece *)realloc(
+            ss->pieces,
+            sizeof(struct segmented_string_piece) * ss->capacity
+        );
+    }
     
     ssp_init_static_copy(&ss->pieces[ss->length - 1], value, length);
 }
@@ -245,10 +284,18 @@ void ss_append_placeholder_uint8(struct segmented_string *ss, const char *placeh
     }
 
     ss->length++;
-    ss->pieces = (struct segmented_string_piece *)realloc(
-        ss->pieces,
-        sizeof(struct segmented_string_piece) * ss->length
-    );
+    if (ss->length > ss->capacity) {
+        if (ss->capacity < 8) {
+            ss->capacity = 8;
+        } else {
+            ss->capacity *= 2;
+        }
+
+        ss->pieces = (struct segmented_string_piece *)realloc(
+            ss->pieces,
+            sizeof(struct segmented_string_piece) * ss->capacity
+        );
+    }
 
     ssp_init_placeholder_uint8(&ss->pieces[ss->length - 1], placeholder);
 }

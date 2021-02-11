@@ -2,7 +2,7 @@
 #include "segmented_string.h"
 
 int main(int argc, char *argv[]) {
-    struct segmented_string *ss = ss_create();
+    struct segmented_string *ss = ss_create_initialized(STATIC_STRING, 2);
 
     ss_append_static_copy_static(ss, "hello world mate");
 
