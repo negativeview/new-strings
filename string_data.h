@@ -26,6 +26,16 @@ struct string_data {
     char *data;
 };
 
+struct string_data *sd_create() {
+    struct string_data *sd = (struct string_data *)malloc(sizeof(struct string_data));
+    
+    sd->flags = 0;
+    sd->length = 0;
+    sd->data = NULL;
+
+    return sd;
+}
+
 void sd_print(struct string_data *sd) {
     if ((sd->flags & STRING_CSTRING) == STRING_CSTRING) {
         printf("%s", sd->data);
@@ -34,15 +44,23 @@ void sd_print(struct string_data *sd) {
     }
 }
 
+struct string_data *sd_create_from(struct string_data *in, uint8_t start, uint8_t end) {
+    struct string_data *sd = sd_create();
+    sd->flags = in->flags ^ (STRING_OWNS_DATA | STRING_CSTRING);
+    sd->length = end - start;
+    sd->data = &in->data[start];
+    return sd;
+}
+
 /**
  * Creates a new `string string_data` and returns a pointer. Copies the `value`
  * and considers itself to "own" the copy. You can do whatever you want with
  * the argument afterward.
  */
-struct string_data *sd_create_copy(const char *value) {
-    struct string_data *sd = (struct string_data *)malloc(sizeof(struct string_data));
+struct string_data *sd_create_copy(const char *value, uint8_t length) {
+    struct string_data *sd = sd_create();
     sd->flags = (STRING_DATA_ASCII | STRING_OWNS_DATA);
-    sd->length = strlen(value);
+    sd->length = length;
     sd->data = (char *)malloc(sizeof(char) * sd->length);
     strncpy(sd->data, value, sd->length);
 
@@ -50,7 +68,7 @@ struct string_data *sd_create_copy(const char *value) {
 }
 
 struct string_data *sd_clone(struct string_data *in) {
-    struct string_data *sd = (struct string_data *)malloc(sizeof(struct string_data));
+    struct string_data *sd = sd_create();
 
     // TODO: This only works if the other bit of string data isn't freed before this one.
     // It's risky. It works for our tests, but we need a more robust system.
